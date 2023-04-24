@@ -91,10 +91,10 @@ class ContextUnet(nn.Module):
         self.up1 = UnetUp(in_channels=n_feat*8, out_channels=n_feat*2)
         self.up2 = UnetUp(in_channels=n_feat*4, out_channels=n_feat)
         self.up3 = nn.Sequential(
-            nn.Conv1d(n_feat, 1, 3, 1,1),
+            nn.Conv1d(2*n_feat, n_feat, 3, 1,1),
             nn.GroupNorm(4, n_feat),
             nn.ReLU(),
-            nn.Conv1d(1, 1, 3, 1, 1),
+            nn.Conv1d(n_feat, 1, 3, 1, 1),
         )
         
         self.phy_emb1 = Embed(self.cd_dim, n_feat*4)
@@ -127,8 +127,8 @@ class ContextUnet(nn.Module):
         up1 = self.up0(d3) # n_feat*4
         up2 = self.up1(up1*cemb1+temb1, d2) # n_feat*2
         up3 = self.up2(up2*cemb2+temb2, d1) # n_feat
-        up4 = self.up3(up3, x) # 1
-        breakpoint()
+        up4 = self.up3(torch.cat((up3, x), 1)) # 1
+        
         out = self.x_emb_out(up4)
         return out.squeeze(1)
     
