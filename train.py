@@ -23,7 +23,7 @@ class MinMaxScaler:
         self.min_val = np.min(data, axis=0)
         self.max_val = np.max(data, axis=0)
 
-    def transform(self, data: np.ndarray) -> torch.Tensor:
+    def transform(self, data: np.ndarray) -> np.ndarray:
         data_norm = (data - self.min_val) / (self.max_val - self.min_val)
         return data_norm
 
@@ -69,7 +69,7 @@ def train(args:argparse.Namespace):
     device = try_device()
 
     data_path = 'data_process/all_data.csv'
-    save_dir = 'train/add_non_negative_loss/'
+    save_dir = 'train/big_model/'
     scaler = MinMaxScaler()
     dataset = CustomDataset(data_path, scaler)
     dataset.cal_transf() # min_max transf of EGv
@@ -104,10 +104,9 @@ def train(args:argparse.Namespace):
             loss_list.append(loss_ema)
             optim.step()
         loss_save.append(loss_list)
-        if args.save_model:
+        if args.save_model and ep%10 == 0:
             torch.save(ddpm.state_dict(), save_dir + f"model_{ep}.pth")
             print('saved model at ' + save_dir + f"model_{ep}.pth")    
-        if ep%10 == 0:
             df_loss = pd.DataFrame(loss_save)
             df_loss.to_csv(save_dir+'loss.csv', index=False)
     print("train finished")
@@ -125,9 +124,9 @@ def try_device(i=0):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='hyperparameter')
     parser.add_argument('--n_epoch', type=int, default=10000)
-    parser.add_argument('--batch_size', type=int, default=4000)
-    parser.add_argument('--n_T', type=int, default=500, help='扩散步数')
-    parser.add_argument('--n_feat', type=int, default=8, help='number of feature in Unet')
+    parser.add_argument('--batch_size', type=int, default=1024)
+    parser.add_argument('--n_T', type=int, default=1000, help='扩散步数')
+    parser.add_argument('--n_feat', type=int, default=256, help='number of feature in Unet')
     parser.add_argument('--l_rate', type=float, default=1e-3)
     parser.add_argument('--ws_test', type=list, default=[0.0, 0.5, 2.0], help='strength of generative guidance')
     parser.add_argument('--drop_prob', type=float, default=0.01)

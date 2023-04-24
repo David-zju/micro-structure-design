@@ -9,6 +9,18 @@ import argparse
 import pandas as pd
 from train import *
 
+def output_transf(x:torch.Tensor)-> torch.Tensor:
+    scaler = MinMaxScaler()
+    x_np = x.to('cpu').numpy()
+    scaler.fit(x_np)
+    x_norm = torch.tensor(scaler.transform(x_np))
+    scale = torch.cat([10*torch.ones(1,24), torch.ones(1,2)], dim=1)
+    # breakpoint()
+    return x_norm*scale
+    
+
+
+
 def sample(model_path, output_path, conditions=[]):
     device = try_device()
 
@@ -34,12 +46,13 @@ def sample(model_path, output_path, conditions=[]):
         for w in ws_test:
             print(f"w = {w}")
             x_gen = ddpm.sample([26], device, torch.tensor(conditions).to(device), guide_w=w)
+            x_gen = output_transf(x_gen)
             test_df['Geo_'+str(w)] = x_gen.tolist()
 
     test_df.to_csv(output_path)
 
 if __name__ == "__main__":
-    model_dir = 'train/add_non_negative_loss/model_1642.pth'
+    model_dir = 'train/add_non_negative_loss/model_1047.pth'
     output_dir = 'generate\output.csv'
     # conditions.shape = [n_samples, features=(9, 1)]
     sample(model_dir, output_dir)

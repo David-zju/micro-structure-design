@@ -12,7 +12,7 @@ class my_loss(nn.Module):
         # loss_coordinate = self.loss_mse(torch.clamp(x[:, :24], min=0, max=10), x[:, :24])
         loss_thickness = self.loss_mse(x[:, 24:], torch.zeros_like(x[:, 24:])) # we suppose the training data is correct
         # breakpoint()
-        return loss + loss_thickness*0.2 # can be modified
+        return loss + loss_thickness*0.4 # can be modified
 
 def ddpm_schedules(beta1, beta2, T):
     """
