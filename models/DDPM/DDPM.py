@@ -73,7 +73,6 @@ class DDPM(nn.Module):
         context_mask = torch.bernoulli(torch.zeros(c.shape[0])+self.drop_prob).to(self.device)
         # return MSE between added noise, and our predicted noise
 
-        breakpoint()
         return self.loss_mse(noise, self.nn_model(x_t, c, _ts / self.n_T, context_mask), x)
     
     def sample(self, size, device, conditions, guide_w = 0):

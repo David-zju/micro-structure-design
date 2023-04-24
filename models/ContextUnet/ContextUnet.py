@@ -84,17 +84,23 @@ class ContextUnet(nn.Module):
         self.drop_prob = drop_prob
         self.cd_dim = 9
         self.init_conv = ResidualConvBlock(in_channels, n_feat)
-        self.down1 = UnetDown(in_channels=1, out_channels=n_feat)
-        self.down2 = UnetDown(in_channels=n_feat, out_channels=n_feat*2)
-        self.down3 = UnetDown(in_channels=n_feat*2, out_channels=n_feat*4)
-        self.up1 = UnetUp(in_channels=n_feat*4, out_channels=n_feat*2)
+        self.down1 = UnetDown(in_channels=n_feat, out_channels=n_feat*2)
+        self.down2 = UnetDown(in_channels=n_feat*2, out_channels=n_feat*4)
+        self.down3 = UnetDown(in_channels=n_feat*4, out_channels=n_feat*8)
+        self.up0 = UnetUp(in_channels=n_feat*8, out_channels=n_feat*4)
+        self.up1 = UnetUp(in_channels=n_feat*8, out_channels=n_feat*2)
         self.up2 = UnetUp(in_channels=n_feat*4, out_channels=n_feat)
-        self.up3 = UnetUp(in_channels=n_feat*2, out_channels=1)
+        self.up3 = nn.Sequential(
+            nn.Conv1d(n_feat, 1, 3, 1,1),
+            nn.GroupNorm(4, n_feat),
+            nn.ReLU(),
+            nn.Conv1d(1, 1, 3, 1, 1),
+        )
         
-        self.phy_emb1 = Embed(self.cd_dim, n_feat*2)
-        self.phy_emb2 = Embed(self.cd_dim, n_feat)
-        self.t_emb1 = Embed(1, n_feat*2)
-        self.t_emb2 = Embed(1, n_feat)
+        self.phy_emb1 = Embed(self.cd_dim, n_feat*4)
+        self.phy_emb2 = Embed(self.cd_dim, n_feat*2)
+        self.t_emb1 = Embed(1, n_feat*4)
+        self.t_emb2 = Embed(1, n_feat*2)
         self.x_emb_in = nn.Sequential(nn.Linear(26, 32),
                                    nn.GELU(),
                                    nn.Linear(32, 32))
@@ -113,16 +119,17 @@ class ContextUnet(nn.Module):
         temb1 = self.t_emb1(t)
         temb2 = self.t_emb2(t)
         
+        x = self.init_conv(x) # n_feat
+        d1 = self.down1(x) # n_feat*2
+        d2 = self.down2(d1) # n_feat*4
+        d3 = self.down3(d2) # n_feat*8
         
-        d1 = self.down1(x)
-        d2 = self.down2(d1)
-        d3 = self.down3(d2)
-        
-        up1 = self.up1(d3)
-        up2 = self.up2(up1*cemb1+temb1, d2)
-        up3 = self.up3(up2*cemb2+temb2, d1)
-
-        out = self.x_emb_out(up3)
+        up1 = self.up0(d3) # n_feat*4
+        up2 = self.up1(up1*cemb1+temb1, d2) # n_feat*2
+        up3 = self.up2(up2*cemb2+temb2, d1) # n_feat
+        up4 = self.up3(up3, x) # 1
+        breakpoint()
+        out = self.x_emb_out(up4)
         return out.squeeze(1)
     
 if __name__ == "__main__":
