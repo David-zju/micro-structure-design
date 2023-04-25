@@ -24,3 +24,18 @@ add_non_negative_loss:
     parser.add_argument('--save_model', type=bool, default=True)
     thickness: 0.2
 ```
+
+4_25:
+增加了feature和扩散步数（然后增加了输入的归一化）
+```python
+    parser = argparse.ArgumentParser(description='hyperparameter')
+    parser.add_argument('--n_epoch', type=int, default=5000)
+    parser.add_argument('--batch_size', type=int, default=1024)
+    parser.add_argument('--n_T', type=int, default=1000, help='扩散步数')
+    parser.add_argument('--n_feat', type=int, default=256, help='number of feature in Unet')
+    parser.add_argument('--l_rate', type=float, default=5e-4)
+    parser.add_argument('--ws_test', type=list, default=[0.0, 0.5, 2.0], help='strength of generative guidance')
+    parser.add_argument('--drop_prob', type=float, default=0.1)
+    parser.add_argument('--save_model', type=bool, default=True)
+```
+add_mask: 和上面一样

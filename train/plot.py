@@ -11,7 +11,7 @@ def plot_loss(path:str):
     plt.ylabel('Loss')
     plt.title('Training Loss')
     # plt.show()
-    plt.savefig('train/add_non_negative_loss.png')
+    plt.savefig('train/add_mask.png')
 
 if __name__ == "__main__":
-    plot_loss('train\\add_non_negative_loss\\')
+    plot_loss('train\\add_mask\\')

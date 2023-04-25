@@ -52,15 +52,21 @@ class CustomDataset(Dataset):
     
     def __getitem__(self, index):
         row = self.data.iloc[index]
-        # to be modified
+        exist = np.ones(24)
         x = np.array(str2list(row[13]), dtype=np.float32)
+        exist[x == -1] = 0
+        x[x==-1] = 0 # change default value
+        x = (x-5)/5
         thickness = np.array([row[10],row[10]], dtype=np.float32)
+        thickness = ((thickness-0.75)*2)/1.1
         x = np.concatenate((x, thickness), axis=0)
+        exist = np.concatenate((exist, np.ones(2)), axis=0)
+        x = np.concatenate((x.reshape(1,26),exist.reshape(1,26)), axis=0, dtype=np.float32)
         condition1 = np.array(row[1:4], dtype=np.float32) # EvG
         condition2 = np.array(str2list(row[12]), dtype=np.float32) # Type
         conditions = np.concatenate((condition1, condition2), axis=0)
         
-        x[x==-1] = 0 # change default value
+        
         return x, conditions
 
 
@@ -69,13 +75,13 @@ def train(args:argparse.Namespace):
     device = try_device()
 
     data_path = 'data_process/all_data.csv'
-    save_dir = 'train/big_model/'
+    save_dir = 'train/add_mask/'
     scaler = MinMaxScaler()
     dataset = CustomDataset(data_path, scaler)
     dataset.cal_transf() # min_max transf of EGv
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=4)
 
-    ddpm = DDPM.DDPM(nn_model = Unet.ContextUnet(in_channels=1, n_feat=args.n_feat, drop_prob=args.drop_prob),
+    ddpm = DDPM.DDPM(nn_model = Unet.ContextUnet(in_channels=2, n_feat=args.n_feat, drop_prob=args.drop_prob),
                 betas = (1e-4, 0.02), n_T = args.n_T, device = device, drop_prob = args.drop_prob)
     ddpm.to(device)
     
@@ -114,6 +120,59 @@ def train(args:argparse.Namespace):
     return 
 
 
+def train_continue(model_dir:str, args:argparse.Namespace):
+    device = try_device()
+
+    data_path = 'data_process/all_data.csv'
+    save_dir = 'train/4_25/'
+    scaler = MinMaxScaler()
+    dataset = CustomDataset(data_path, scaler)
+    dataset.cal_transf() # min_max transf of EGv
+    dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=4)
+
+    ddpm = DDPM.DDPM(nn_model = Unet.ContextUnet(in_channels=1, n_feat=args.n_feat, drop_prob=args.drop_prob),
+                betas = (1e-4, 0.02), n_T = args.n_T, device = device, drop_prob = args.drop_prob)
+    ddpm.to(device)
+    ddpm.load_state_dict(torch.load(model_dir))
+    lrate = args.l_rate
+    optim = torch.optim.Adam(ddpm.parameters(), lr=lrate)
+    loss_save = []
+    ddpm.train()
+    for ep in range(args.n_epoch):
+        print(f'epoch {ep}')
+        loss_list = []
+        
+        optim.param_groups[0]["lr"] = lrate*(1-ep/args.n_epoch)
+        pbar = tqdm(dataloader)
+        loss_ema = None
+        for x,c in pbar:
+            optim.zero_grad()
+            x = x.to(device)
+            c = c.to(device)
+            loss = ddpm(x, c)
+            loss.backward()
+            if loss_ema is None:
+                loss_ema = loss.item()
+            else: 
+                loss_ema = 0.95 * loss_ema + 0.05 * loss.item()
+            pbar.set_description(f"loss: {loss_ema:.4f}")
+            loss_list.append(loss_ema)
+            optim.step()
+        loss_save.append(loss_list)
+        if args.save_model and ep%10 == 0:
+            torch.save(ddpm.state_dict(), save_dir + f"model_{ep}.pth")
+            print('saved model at ' + save_dir + f"model_{ep}.pth")  
+            df_loss = pd.read_csv(save_dir+'loss.csv')
+            df_append = pd.DataFrame(loss_save)
+            df_loss = pd.concat([df_loss, df_append], axis=0)
+            df_loss.to_csv(save_dir+'loss.csv', index=False)
+            loss_save = []
+    print("train finished")
+    
+    return
+
+
+
 def try_device(i=0):
     if torch.cuda.device_count() >= i+1:
         return torch.device(f"cuda:{i}")
@@ -127,9 +186,10 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', type=int, default=1024)
     parser.add_argument('--n_T', type=int, default=1000, help='扩散步数')
     parser.add_argument('--n_feat', type=int, default=256, help='number of feature in Unet')
-    parser.add_argument('--l_rate', type=float, default=1e-3)
+    parser.add_argument('--l_rate', type=float, default=5e-4)
     parser.add_argument('--ws_test', type=list, default=[0.0, 0.5, 2.0], help='strength of generative guidance')
-    parser.add_argument('--drop_prob', type=float, default=0.01)
+    parser.add_argument('--drop_prob', type=float, default=0.1)
     parser.add_argument('--save_model', type=bool, default=True)
     # print(type(parser.parse_args()))
     train(parser.parse_args())
+    # train_continue("train/4_25/model_40.pth",parser.parse_args())

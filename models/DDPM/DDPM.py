@@ -54,7 +54,7 @@ class DDPM(nn.Module):
         self.n_T = n_T
         self.device = device
         self.drop_prob = drop_prob
-        self.loss_mse = my_loss()
+        self.loss_mse = nn.MSELoss()
     
     def forward(self, x, c):
         """
@@ -63,8 +63,8 @@ class DDPM(nn.Module):
         _ts = torch.randint(1, self.n_T+1, (x.shape[0],)).to(self.device)  # t ~ Uniform(0, n_T)
         noise = torch.randn_like(x)  # eps ~ N(0, 1)
         x_t = (
-            self.sqrtab[_ts, None] * x
-            + self.sqrtmab[_ts, None] * noise
+            self.sqrtab[_ts, None, None] * x
+            + self.sqrtmab[_ts, None, None] * noise
         )  # This is the x_t, which is sqrt(alphabar) x_0 + sqrt(1-alphabar) * eps
         # We should predict the "error term" from this x_t. Loss is what we return.
         
@@ -72,8 +72,9 @@ class DDPM(nn.Module):
         # context_mask = torch.bernoulli(torch.zeros_like(c)+self.drop_prob).to(self.device)
         context_mask = torch.bernoulli(torch.zeros(c.shape[0])+self.drop_prob).to(self.device)
         # return MSE between added noise, and our predicted noise
-
-        return self.loss_mse(noise, self.nn_model(x_t, c, _ts / self.n_T, context_mask), x)
+        # breakpoint()
+        # loss_ = self.loss_mse(noise, self.nn_model(x_t, c, _ts / self.n_T, context_mask), x)
+        return self.loss_mse(noise, self.nn_model(x_t, c, _ts / self.n_T, context_mask))
     
     def sample(self, size, device, conditions, guide_w = 0):
         n_sample = conditions.shape[0]

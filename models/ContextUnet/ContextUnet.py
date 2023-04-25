@@ -94,7 +94,7 @@ class ContextUnet(nn.Module):
             nn.Conv1d(2*n_feat, n_feat, 3, 1,1),
             nn.GroupNorm(4, n_feat),
             nn.ReLU(),
-            nn.Conv1d(n_feat, 1, 3, 1, 1),
+            nn.Conv1d(n_feat, 2, 3, 1, 1),
         )
         
         self.phy_emb1 = Embed(self.cd_dim, n_feat*4)
@@ -111,7 +111,7 @@ class ContextUnet(nn.Module):
     def forward(self, x:torch.Tensor, conditions:torch.Tensor, t:torch.Tensor, context_mask:torch.Tensor):
         conditions = conditions * context_mask.unsqueeze(1)
         t = t.unsqueeze(1)
-        x = x.unsqueeze(1)
+        # x = x.unsqueeze(1)
         # embed
         x = self.x_emb_in(x)
         cemb1 = self.phy_emb1(conditions)
@@ -130,7 +130,7 @@ class ContextUnet(nn.Module):
         up4 = self.up3(torch.cat((up3, x), 1)) # 1
         
         out = self.x_emb_out(up4)
-        return out.squeeze(1)
+        return out
     
 if __name__ == "__main__":
     batch_size = 2
