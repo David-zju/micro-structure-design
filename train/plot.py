@@ -11,7 +11,7 @@ def plot_loss(path:str):
     plt.ylabel('Loss')
     plt.title('Training Loss')
     # plt.show()
-    plt.savefig('train/add_mask.png')
+    plt.savefig('train/add_mask.png', dpi=300)
 
 if __name__ == "__main__":
     plot_loss('train\\add_mask\\')

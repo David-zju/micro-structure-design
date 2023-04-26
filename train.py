@@ -51,13 +51,15 @@ class CustomDataset(Dataset):
         return len(self.data)
     
     def __getitem__(self, index):
+        
         row = self.data.iloc[index]
         exist = np.ones(24)
         x = np.array(str2list(row[13]), dtype=np.float32)
-        exist[x == -1] = 0
-        x[x==-1] = 0 # change default value
-        x = (x-5)/5
         thickness = np.array([row[10],row[10]], dtype=np.float32)
+        exist[x == -1] = 0
+        x[x==-1] = 5 # change default value
+        x = (x-5)/5   
+        
         thickness = ((thickness-0.75)*2)/1.1
         x = np.concatenate((x, thickness), axis=0)
         exist = np.concatenate((exist, np.ones(2)), axis=0)
@@ -65,6 +67,24 @@ class CustomDataset(Dataset):
         condition1 = np.array(row[1:4], dtype=np.float32) # EvG
         condition2 = np.array(str2list(row[12]), dtype=np.float32) # Type
         conditions = np.concatenate((condition1, condition2), axis=0)
+        
+        #add new code for normalization of geometric information
+        # row = self.data.iloc[index]
+        # exist = np.ones(26)
+        # x_list = str2list(row[13])
+        # x = [ n/10 if n!=-1 else n for n in x_list] #the range of x is changed to {-1,0~1}
+        # x = np.array( x, dtype=np.float32)
+        # thickness = np.array([row[10],row[10]], dtype=np.float32) #should be modified later
+        # thickness = ((thickness-0.2))/1.1 
+        # if x[12]==x[13]==x[14] and x[12]==-1: 
+        #     thickness[1] = -1
+        #     #the range of thickness is changed to {-1,0~1}
+        # x = np.concatenate((x, thickness), axis=0)
+        # exist[x == -1] = 0
+        # x = np.concatenate((x.reshape(1,26),exist.reshape(1,26)), axis=0, dtype=np.float32)
+        # condition1 = np.array(row[1:4], dtype=np.float32) # EvG
+        # condition2 = np.array(str2list(row[12]), dtype=np.float32) # Type
+        # conditions = np.concatenate((condition1, condition2), axis=0)
         
         
         return x, conditions
@@ -182,12 +202,12 @@ def try_device(i=0):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='hyperparameter')
-    parser.add_argument('--n_epoch', type=int, default=10000)
+    parser.add_argument('--n_epoch', type=int, default=5000)
     parser.add_argument('--batch_size', type=int, default=1024)
     parser.add_argument('--n_T', type=int, default=1000, help='扩散步数')
     parser.add_argument('--n_feat', type=int, default=256, help='number of feature in Unet')
     parser.add_argument('--l_rate', type=float, default=5e-4)
-    parser.add_argument('--ws_test', type=list, default=[0.0, 0.5, 2.0], help='strength of generative guidance')
+    parser.add_argument('--ws_test', type=list, default=[0.0, 0.5, 2.0, 4.0, 6.0], help='strength of generative guidance')
     parser.add_argument('--drop_prob', type=float, default=0.1)
     parser.add_argument('--save_model', type=bool, default=True)
     # print(type(parser.parse_args()))

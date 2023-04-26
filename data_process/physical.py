@@ -7,9 +7,10 @@ def read_phy_file(file_path):
     读取物理信息格式的文件
     '''
     # 读取厚度信息
-    pattern = r'T([\d\.]+)'
+    pattern = r'T([\d\.]+)T([\d\.]+)'
     match = re.search(pattern, file_path)
-    thickness = float(match.group(1))
+    thickness1 = float(match.group(1))
+    thickness2 = float(match.group(2))
     
     # 读取txt文件
     with open(file_path, 'r') as f:
@@ -18,18 +19,20 @@ def read_phy_file(file_path):
     # 将数据转换为DataFrame格式
     data = []
     columns = lines[0].strip().split()
-    columns.append("Thickness")
+    columns.append("Thickness1")
+    columns.append("Thickness2")
     for line in lines[1:]:  # 跳过第一行的表头
         line = line.strip().split()
         if(line[0][-2:] == 'ES'): continue # 跳过重复的
-        line.append(thickness)
+        line.append(thickness1)
+        line.append(thickness2)
         data.append(line)
     return pd.DataFrame(data, columns=columns)
 
 def read_phy_files(folder_path = 'data_process/物理属性'):
     '''
     将物理属性数据一次性从多个文件读入, 然后合并为一个dataframe返回
-    索引为 [Name,E11,V12,G12,C11,C12,C44,RelDensity,AniRatio,mass,Thickness]
+    索引为 [Name,E11,V12,G12,C11,C12,C44,RelDensity,AniRatio,mass,Thickness1,Thickness2]
     '''
     df_list = []
     for file_name in os.listdir(folder_path):
