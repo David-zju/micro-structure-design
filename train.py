@@ -67,7 +67,8 @@ class CustomDataset(Dataset):
         x = x.reshape(8,3).T # transf to [3,8]
         thickness = ((thickness-0.75)*2)/1.1
         x = np.concatenate((x,thickness.reshape(1,8),exist.reshape(1,8)), axis=0, dtype=np.float32)
-        
+        if(x>-1).all() and (x<1).all(): # 似乎是没问题的
+            breakpoint()
         condition1 = np.array(row[1:4], dtype=np.float32) # EvG
         condition2 = np.array(str2list(row[12]), dtype=np.float32) # Type
         conditions = np.concatenate((condition1, condition2), axis=0)
@@ -97,7 +98,7 @@ def train(args:argparse.Namespace):
     device = try_device()
 
     data_path = 'data_process/all_data.csv'
-    save_dir = 'train/4_27_relu/'
+    save_dir = 'train/4_27_not_embed/'
     scaler = MinMaxScaler()
     dataset = CustomDataset(data_path, scaler)
     dataset.cal_transf() # min_max transf of EGv

@@ -13,7 +13,6 @@ def output_transf(x_gen:torch.Tensor)-> torch.Tensor:
     scaler = MinMaxScaler()
     # x_np = x.to('cpu').numpy()
     # x = x.to('cpu')
-    breakpoint()
     batch_size = x_gen.shape[0]
     exist_x = torch.round(x_gen[:,4,:]).repeat_interleave(3, dim=1) # [batch_size, 24]
     exist_t = torch.round(x_gen[:,4,:].reshape(-1,2,4).mean(dim=2)) # [batch_size, 2]
@@ -29,6 +28,7 @@ def output_transf(x_gen:torch.Tensor)-> torch.Tensor:
     thickness = torch.concat((thickness1.reshape(batch_size,1), thickness2.reshape(batch_size,1)),dim=1) # [batch_size, 2]
     thickness = (torch.clamp(thickness, -1, 1)/2)*1.1 + 0.75 
     thickness[exist_t == 0] = -1
+    # breakpoint()
     return torch.concat((x, thickness), dim=1)
     
 
@@ -65,7 +65,7 @@ def sample(model_path, output_path, conditions=[]):
     test_df.to_csv(output_path, index=False)
 
 if __name__ == "__main__":
-    model_dir = 'train/4_27/model_1460.pth'
+    model_dir = 'train/4_27_not_embed/model_1000.pth'
     output_dir = 'generate\output.csv'
     # conditions.shape = [n_samples, features=(9, 1)]
     sample(model_dir, output_dir)

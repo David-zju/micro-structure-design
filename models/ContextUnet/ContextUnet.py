@@ -122,8 +122,8 @@ class ContextUnet(nn.Module):
         
         x = self.init_conv(x) # n_feat
         d1 = self.down1(x) # n_feat*2
-        d2 = self.down2(d1*cemb2+temb2) # n_feat*4
-        d3 = self.down3(d2*cemb1+temb1) # n_feat*8
+        d2 = self.down2(d1) # n_feat*4
+        d3 = self.down3(d2) # n_feat*8
         
         up1 = self.up0(d3) # n_feat*4
         up2 = self.up1(up1*cemb1+temb1, d2) # n_feat*2
