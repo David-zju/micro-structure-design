@@ -9,16 +9,27 @@ import argparse
 import pandas as pd
 from train import *
 
-def output_transf(x:torch.Tensor)-> torch.Tensor:
+def output_transf(x_gen:torch.Tensor)-> torch.Tensor:
     scaler = MinMaxScaler()
     # x_np = x.to('cpu').numpy()
     # x = x.to('cpu')
-    x_gen = x[:,0,:]
-    x_gen[:,0:24] = (torch.clamp(x_gen[:,0:24], -1, 1) + 1) * 5
-    x_gen[:,24:26] = (torch.clamp(x_gen[:,24:26], -1, 1)/2)*1.1 + 0.75 
-    exist = torch.round(x[:,1,:]) #round(0.5) = 0 round(0.6) = 1
-    x_gen[exist == 0] = -1
-    return torch.Tensor(x_gen)
+    breakpoint()
+    batch_size = x_gen.shape[0]
+    exist_x = torch.round(x_gen[:,4,:]).repeat_interleave(3, dim=1) # [batch_size, 24]
+    exist_t = torch.round(x_gen[:,4,:].reshape(-1,2,4).mean(dim=2)) # [batch_size, 2]
+    
+    x = x_gen[:,0:3,:]
+    x = torch.transpose(x,1,2).reshape(-1,24) #[batch_size, 24]
+    x = (torch.clamp(x, -1, 1) + 1) * 5
+    x[exist_x == 0] = -1
+    
+    thickness = x_gen[:,3,:]
+    thickness1 = torch.mean(thickness[:,:4],dim=1)
+    thickness2 = torch.mean(thickness[:,-4:], dim=1)
+    thickness = torch.concat((thickness1.reshape(batch_size,1), thickness2.reshape(batch_size,1)),dim=1) # [batch_size, 2]
+    thickness = (torch.clamp(thickness, -1, 1)/2)*1.1 + 0.75 
+    thickness[exist_t == 0] = -1
+    return torch.concat((x, thickness), dim=1)
     
 
 
@@ -37,7 +48,7 @@ def sample(model_path, output_path, conditions=[]):
     conditions = np.array(conditions, dtype=np.float32)
     conditions[:,0:3] = scaler.transform(conditions[:,0:3])
 
-    ddpm = DDPM.DDPM(nn_model = Unet.ContextUnet(in_channels=2, n_feat=256, drop_prob=0.1),
+    ddpm = DDPM.DDPM(nn_model = Unet.ContextUnet(in_channels=5, n_feat=256, drop_prob=0.1),
                 betas = (1e-4, 0.02), n_T = 1000, device = device, drop_prob = 0.1)
     ddpm.to(device)
     ddpm.load_state_dict(torch.load(model_path))
@@ -47,14 +58,14 @@ def sample(model_path, output_path, conditions=[]):
     with torch.no_grad():
         for w in ws_test:
             print(f"w = {w}")
-            x_gen = ddpm.sample([2,26], device, torch.tensor(conditions).to(device), guide_w=w)
+            x_gen = ddpm.sample([5,8], device, torch.tensor(conditions).to(device), guide_w=w)
             x_gen = output_transf(x_gen)
             test_df['Geo_'+str(w)] = x_gen.tolist()
 
     test_df.to_csv(output_path, index=False)
 
 if __name__ == "__main__":
-    model_dir = 'train/add_mask/model_2400.pth'
+    model_dir = 'train/4_27/model_1460.pth'
     output_dir = 'generate\output.csv'
     # conditions.shape = [n_samples, features=(9, 1)]
     sample(model_dir, output_dir)

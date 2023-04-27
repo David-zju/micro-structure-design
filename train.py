@@ -18,7 +18,6 @@ class MinMaxScaler:
         self.min_val = None
         self.max_val = None
         
-
     def fit(self, data: np.ndarray):
         self.min_val = np.min(data, axis=0)
         self.max_val = np.max(data, axis=0)
@@ -53,21 +52,25 @@ class CustomDataset(Dataset):
     def __getitem__(self, index):
         
         row = self.data.iloc[index]
-        exist = np.ones(24)
+        exist = np.ones(8)
         x = np.array(str2list(row[13]), dtype=np.float32)
-        thickness = np.array([row[10],row[10]], dtype=np.float32)
-        exist[x == -1] = 0
+        thickness = np.ones(8)*row[10]
+        
+        if (x[-12:] == -1).all():
+            exist[-4:] = 0
+        if (x[0:12] == -1).all():
+            exist[0:4] = 0
+        
+        # scale to [-1, 1]
         x[x==-1] = 5 # change default value
         x = (x-5)/5   
-        
+        x = x.reshape(8,3).T # transf to [3,8]
         thickness = ((thickness-0.75)*2)/1.1
-        x = np.concatenate((x, thickness), axis=0)
-        exist = np.concatenate((exist, np.ones(2)), axis=0)
-        x = np.concatenate((x.reshape(1,26),exist.reshape(1,26)), axis=0, dtype=np.float32)
+        x = np.concatenate((x,thickness.reshape(1,8),exist.reshape(1,8)), axis=0, dtype=np.float32)
+        
         condition1 = np.array(row[1:4], dtype=np.float32) # EvG
         condition2 = np.array(str2list(row[12]), dtype=np.float32) # Type
         conditions = np.concatenate((condition1, condition2), axis=0)
-        
         #add new code for normalization of geometric information
         # row = self.data.iloc[index]
         # exist = np.ones(26)
@@ -86,7 +89,6 @@ class CustomDataset(Dataset):
         # condition2 = np.array(str2list(row[12]), dtype=np.float32) # Type
         # conditions = np.concatenate((condition1, condition2), axis=0)
         
-        
         return x, conditions
 
 
@@ -95,13 +97,13 @@ def train(args:argparse.Namespace):
     device = try_device()
 
     data_path = 'data_process/all_data.csv'
-    save_dir = 'train/add_mask/'
+    save_dir = 'train/4_27_relu/'
     scaler = MinMaxScaler()
     dataset = CustomDataset(data_path, scaler)
     dataset.cal_transf() # min_max transf of EGv
-    dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=4)
+    dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=0)
 
-    ddpm = DDPM.DDPM(nn_model = Unet.ContextUnet(in_channels=2, n_feat=args.n_feat, drop_prob=args.drop_prob),
+    ddpm = DDPM.DDPM(nn_model = Unet.ContextUnet(in_channels=5, n_feat=args.n_feat, drop_prob=args.drop_prob),
                 betas = (1e-4, 0.02), n_T = args.n_T, device = device, drop_prob = args.drop_prob)
     ddpm.to(device)
     

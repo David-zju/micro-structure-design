@@ -51,6 +51,7 @@ class UnetUp(nn.Module):
             nn.ConvTranspose1d(in_channels, out_channels, 2, 2),
             ResidualConvBlock(out_channels, out_channels),
             ResidualConvBlock(out_channels, out_channels),
+            # nn.GELU()
             nn.ReLU()
         ]
         self.model = nn.Sequential(*layers)
@@ -93,20 +94,20 @@ class ContextUnet(nn.Module):
         self.up3 = nn.Sequential(
             nn.Conv1d(2*n_feat, n_feat, 3, 1,1),
             nn.GroupNorm(4, n_feat),
-            nn.ReLU(),
-            nn.Conv1d(n_feat, 2, 3, 1, 1),
+            nn.GELU(),
+            nn.Conv1d(n_feat, 5, 3, 1, 1),
         )
         
         self.phy_emb1 = Embed(self.cd_dim, n_feat*4)
         self.phy_emb2 = Embed(self.cd_dim, n_feat*2)
         self.t_emb1 = Embed(1, n_feat*4)
         self.t_emb2 = Embed(1, n_feat*2)
-        self.x_emb_in = nn.Sequential(nn.Linear(26, 32),
+        self.x_emb_in = nn.Sequential(nn.Linear(8, 8),
                                    nn.GELU(),
-                                   nn.Linear(32, 32))
-        self.x_emb_out = nn.Sequential(nn.Linear(32, 26),
+                                   nn.Linear(8, 8))
+        self.x_emb_out = nn.Sequential(nn.Linear(8, 8),
                                    nn.ReLU(),
-                                   nn.Linear(26, 26))
+                                   nn.Linear(8, 8))
 
     def forward(self, x:torch.Tensor, conditions:torch.Tensor, t:torch.Tensor, context_mask:torch.Tensor):
         conditions = conditions * context_mask.unsqueeze(1)
@@ -121,8 +122,8 @@ class ContextUnet(nn.Module):
         
         x = self.init_conv(x) # n_feat
         d1 = self.down1(x) # n_feat*2
-        d2 = self.down2(d1) # n_feat*4
-        d3 = self.down3(d2) # n_feat*8
+        d2 = self.down2(d1*cemb2+temb2) # n_feat*4
+        d3 = self.down3(d2*cemb1+temb1) # n_feat*8
         
         up1 = self.up0(d3) # n_feat*4
         up2 = self.up1(up1*cemb1+temb1, d2) # n_feat*2
@@ -130,6 +131,7 @@ class ContextUnet(nn.Module):
         up4 = self.up3(torch.cat((up3, x), 1)) # 1
         
         out = self.x_emb_out(up4)
+        # breakpoint()
         return out
     
 if __name__ == "__main__":
