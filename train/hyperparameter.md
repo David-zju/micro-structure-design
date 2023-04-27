@@ -39,3 +39,5 @@ add_non_negative_loss:
     parser.add_argument('--save_model', type=bool, default=True)
 ```
 add_mask: 和上面一样
+
+4_27 用的是一样的训练参数，然后现在目前收敛到0.05左右（2000epoch情况下）

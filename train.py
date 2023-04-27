@@ -97,8 +97,8 @@ class CustomDataset(Dataset):
 def train(args:argparse.Namespace):
     device = try_device()
 
-    data_path = 'data_process/all_data.csv'
-    save_dir = 'train/4_27_not_embed/'
+    data_path = 'data_process/all_data_augmented.csv'
+    save_dir = 'train/4_27_aug/'
     scaler = MinMaxScaler()
     dataset = CustomDataset(data_path, scaler)
     dataset.cal_transf() # min_max transf of EGv
@@ -206,7 +206,7 @@ def try_device(i=0):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='hyperparameter')
     parser.add_argument('--n_epoch', type=int, default=5000)
-    parser.add_argument('--batch_size', type=int, default=1024)
+    parser.add_argument('--batch_size', type=int, default=5120)
     parser.add_argument('--n_T', type=int, default=1000, help='扩散步数')
     parser.add_argument('--n_feat', type=int, default=256, help='number of feature in Unet')
     parser.add_argument('--l_rate', type=float, default=5e-4)
