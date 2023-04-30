@@ -51,8 +51,8 @@ class UnetUp(nn.Module):
             nn.ConvTranspose1d(in_channels, out_channels, 2, 2),
             ResidualConvBlock(out_channels, out_channels),
             ResidualConvBlock(out_channels, out_channels),
-            # nn.GELU()
-            nn.ReLU()
+            nn.GELU()
+            # nn.ReLU()
         ]
         self.model = nn.Sequential(*layers)
     def forward(self, x, shortcut:torch.Tensor = None):
@@ -103,10 +103,13 @@ class ContextUnet(nn.Module):
         self.t_emb1 = Embed(1, n_feat*4)
         self.t_emb2 = Embed(1, n_feat*2)
         self.x_emb_in = nn.Sequential(nn.Linear(8, 8),
+                                      nn.BatchNorm1d(5),
                                    nn.GELU(),
                                    nn.Linear(8, 8))
         self.x_emb_out = nn.Sequential(nn.Linear(8, 8),
-                                   nn.ReLU(),
+                                #    nn.ReLU(),
+                                   nn.BatchNorm1d(5),
+                                   nn.GELU(),
                                    nn.Linear(8, 8))
 
     def forward(self, x:torch.Tensor, conditions:torch.Tensor, t:torch.Tensor, context_mask:torch.Tensor):
@@ -128,7 +131,7 @@ class ContextUnet(nn.Module):
         up1 = self.up0(d3) # n_feat*4
         up2 = self.up1(up1*cemb1+temb1, d2) # n_feat*2
         up3 = self.up2(up2*cemb2+temb2, d1) # n_feat
-        up4 = self.up3(torch.cat((up3, x), 1)) # 1
+        up4 = self.up3(torch.cat((up3, x), 1)) # 5
         
         out = self.x_emb_out(up4)
         # breakpoint()
