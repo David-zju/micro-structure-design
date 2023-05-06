@@ -30,15 +30,18 @@ def aug_face(df:pd.DataFrame):
     return pd.concat((df,aug_face_df), axis=0)
 
 def aug_point(df:pd.DataFrame):
-    aug_point_df1 = df.copy(); aug_point_df2 = df.copy(); aug_point_df3 = df.copy()
+    # aug_point_df1 = df.copy(); aug_point_df2 = df.copy(); aug_point_df3 = df.copy()
     concat_df = [df]
     for step in [1,2,3]:
         for face in [0,1]:
-            concat_df.append(aug_point_df1['Fp'].apply(aug_point_Fp, step=step, face=face))
+            aug_point_df = df.copy()
+            aug_point_df['Fp'] = aug_point_df['Fp'].apply(aug_point_Fp, step=step, face=face)
+            concat_df.append(aug_point_df)
     # aug_point_df1['Fp'] = aug_point_df1['Fp'].apply(aug_point_Fp, step=1, face=0)
     # aug_point_df2['Fp'] = aug_point_df2['Fp'].apply(aug_point_Fp, step=2, )
     # aug_point_df3['Fp'] = aug_point_df3['Fp'].apply(aug_point_Fp, step=3)
-    return pd.concat(concat_df, axis=0).drop_duplicates()
+    breakpoint()
+    return pd.concat(tuple(concat_df), axis=0)
 
 if __name__ == "__main__":
     csv_file_path = "data_process/all_data.csv"

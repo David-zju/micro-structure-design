@@ -41,14 +41,14 @@ def sample(model_path, output_path, conditions=[]):
     for row in test_df.itertuples(index=True):
         conditions.append([row.E11, row.V12, row.G12]+str2list(row.Type))
 
-    data_path = 'data_process/all_data.csv'
+    data_path = 'data_process/all_data_augmented.csv'
     scaler = MinMaxScaler()
     dataset = CustomDataset(data_path, scaler)
     dataset.cal_transf() # min_max transf of EGv
     conditions = np.array(conditions, dtype=np.float32)
     conditions[:,0:3] = scaler.transform(conditions[:,0:3])
 
-    ddpm = DDPM.DDPM(nn_model = Unet.ContextUnet(in_channels=5, n_feat=256, drop_prob=0.1),
+    ddpm = DDPM.DDPM(nn_model = Unet.ContextUnet(in_channels=5, n_feat=512, drop_prob=0.1),
                 betas = (1e-4, 0.02), n_T = 1000, device = device, drop_prob = 0.1)
     ddpm.to(device)
     ddpm.load_state_dict(torch.load(model_path))
@@ -65,7 +65,7 @@ def sample(model_path, output_path, conditions=[]):
     test_df.to_csv(output_path, index=False)
 
 if __name__ == "__main__":
-    model_dir = 'train/4_27_not_embed/model_1000.pth'
+    model_dir = 'train/4_29_aug/model_1350.pth'
     output_dir = 'generate\output.csv'
     # conditions.shape = [n_samples, features=(9, 1)]
     sample(model_dir, output_dir)
