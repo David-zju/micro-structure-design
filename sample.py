@@ -7,6 +7,7 @@ from torch.utils.data import Dataset, DataLoader
 import numpy as np
 import argparse
 import pandas as pd
+import os
 from train import *
 
 def output_transf(x_gen:torch.Tensor)-> torch.Tensor:
@@ -31,9 +32,6 @@ def output_transf(x_gen:torch.Tensor)-> torch.Tensor:
     # breakpoint()
     return torch.concat((x, thickness), dim=1)
     
-
-
-
 def sample(model_path, output_path, conditions=[]):
     device = try_device()
 
@@ -61,11 +59,35 @@ def sample(model_path, output_path, conditions=[]):
             x_gen = ddpm.sample([5,8], device, torch.tensor(conditions).to(device), guide_w=w)
             x_gen = output_transf(x_gen)
             test_df['Geo_'+str(w)] = x_gen.tolist()
+            breakpoint()
 
     test_df.to_csv(output_path, index=False)
+    return test_df
+
+def Convert_format(test_df:pd.DataFrame):
+    folder_dir = 'generate/'
+    for row in test_df.itertuples(index=True):
+        geo_vec = eval(row[10])
+        UcName = "E" + str(row.E11) + 'v' + str(row.V12) + "G" + str(row.G12) + '.txt'
+        save_dir = os.path.join(folder_dir, UcName)
+        f = open(save_dir, 'w+')
+        f.write("{0:<10}{1:<10}\n".format('Thickness1', 'Thickness2'))
+        f.write('{0:<10.5f}{1:<10.5f}\n'.format(geo_vec[24], geo_vec[25]))
+        f.write("{0:<10}{1:<10}{2:<10}{3:<10}\n".format('FACE0', 'X', 'Y', 'Z'))
+        for i in range(0,4):
+            f.write('{0:<10}{1:<10.5f}{2:<10.5f}{3:<10.5f}\n'.format('POINT', geo_vec[0+3*i], geo_vec[1+3*i], geo_vec[2+3*i]))
+        # f.write("FACE1    X         Y         Z         \n")
+        f.write("{0:<10}{1:<10}{2:<10}{3:<10}\n".format('FACE1', 'X', 'Y', 'Z'))
+        for i in range(4,8):
+            f.write('{0:<10}{1:<10.5f}{2:<10.5f}{3:<10.5f}\n'.format('POINT', geo_vec[0+3*i], geo_vec[1+3*i], geo_vec[2+3*i]))
+        f.close()
+    print("convert finished")
+    
 
 if __name__ == "__main__":
     model_dir = 'train/4_29_aug/model_1350.pth'
     output_dir = 'generate\output.csv'
     # conditions.shape = [n_samples, features=(9, 1)]
-    sample(model_dir, output_dir)
+    # test_df = sample(model_dir, output_dir)
+    test_df = pd.read_csv(output_dir)
+    Convert_format(test_df)
