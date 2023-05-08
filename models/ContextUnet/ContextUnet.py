@@ -38,13 +38,39 @@ class ResidualConvBlock(nn.Module):
 class UnetDown(nn.Module):
     def __init__(self, in_channels:int, out_channels:int) -> None:
         super(UnetDown, self).__init__()
+        layers = [ResidualConvBlock( in_channels, out_channels)]
+        self.model = nn.Sequential(*layers)
+        
+    def forward(self, x):
+        return self.model(x)
+
+class UnetUp(nn.Module):
+    def __init__(self, in_channels:int, out_channels:int) -> None:
+        super(UnetUp, self).__init__()
+        layers = [
+            nn.ConvTranspose1d(in_channels, out_channels, 3, 1, 1),
+            ResidualConvBlock(out_channels, out_channels),
+            ResidualConvBlock(out_channels, out_channels),
+            nn.GELU()
+            # nn.ReLU()
+        ]
+        self.model = nn.Sequential(*layers)
+    def forward(self, x, shortcut:torch.Tensor = None):
+        if(shortcut != None):
+            x = torch.cat((x, shortcut), 1)    
+        return self.model(x)
+
+
+class oldUnetDown(nn.Module):
+    def __init__(self, in_channels:int, out_channels:int) -> None:
+        super(UnetDown, self).__init__()
         layers = [ResidualConvBlock( in_channels, out_channels), nn.MaxPool1d(2) ]
         self.model = nn.Sequential(*layers)
         
     def forward(self, x):
         return self.model(x)
     
-class UnetUp(nn.Module):
+class oldUnetUp(nn.Module):
     def __init__(self, in_channels:int, out_channels:int) -> None:
         super(UnetUp, self).__init__()
         layers = [
@@ -139,11 +165,11 @@ class ContextUnet(nn.Module):
     
 if __name__ == "__main__":
     batch_size = 2
-    x = torch.rand([batch_size, 26])
+    x = torch.rand([batch_size, 5, 8])
     _ts = torch.randint(1,11,(x.shape[0],))
     conditions = torch.rand([batch_size,9])
     context_mask = torch.bernoulli(torch.zeros(conditions.shape[0])+0.5)
-    trans = ContextUnet(in_channels=1, n_feat=8, drop_prob=0.5)
+    trans = ContextUnet(in_channels=5, n_feat=128, drop_prob=0.5)
     trans(x, conditions, _ts/10, context_mask)
     
     

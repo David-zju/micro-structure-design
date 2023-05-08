@@ -1,16 +1,29 @@
-def shift_list(lst, step):
-    # 将列表分为四组，每组有3个元素
-    sublists = [lst[i:i+3] for i in range(0, len(lst), 3)]
-    
-    # 将每个子列表的元素向后平移step步
-    for i in range(len(sublists)):
-        sublists[i] = sublists[i][-step:] + sublists[i][:-step]
-    
-    # 将四个子列表拼接为一个列表
-    result = sublists[0] + sublists[1] + sublists[2] + sublists[3]
-    return result
+import wandb
+import random
 
-lst = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-step = 2
-lst = lst[step*3:]+lst[:step*3]
-print(lst)
+# start a new wandb run to track this script
+wandb.init(
+    # set the wandb project where this run will be logged
+    project="my-awesome-project",
+    
+    # track hyperparameters and run metadata
+    config={
+    "learning_rate": 0.02,
+    "architecture": "CNN",
+    "dataset": "CIFAR-100",
+    "epochs": 10,
+    }
+)
+
+# simulate training
+epochs = 100
+offset = random.random() / 5
+for epoch in range(2, epochs):
+    acc = 1 - 2 ** -epoch - random.random() / epoch - offset
+    loss = 2 ** -epoch + random.random() / epoch + offset
+    
+    # log metrics to wandb
+    wandb.log({"acc": acc, "loss": loss})
+    
+# [optional] finish the wandb run, necessary in notebooks
+wandb.finish()

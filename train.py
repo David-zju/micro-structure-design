@@ -7,6 +7,8 @@ from torch.utils.data import Dataset, DataLoader
 import numpy as np
 import argparse
 import pandas as pd
+import wandb
+from torch.utils.data import random_split
 
 def str2list(str):
     num_str = str.split('[')[1].split(']')[0].split(',')
@@ -45,6 +47,9 @@ class CustomDataset(Dataset):
         data_norm = self.scaler.transform(data)
         self.data[cols] = data_norm
         return
+    
+    def save_data(self, data_path, df:pd.DataFrame):
+        self.data.to_csv(data_path)
 
     def __len__(self):
         return len(self.data)
@@ -98,11 +103,31 @@ def train(args:argparse.Namespace):
     device = try_device()
 
     data_path = 'data_process/all_data_augmented.csv'
-    save_dir = 'train/4_29_aug/'
+    save_dir = 'train/5_8/'
+    wandb.init(
+        project="Inverse-Design",
+        config={
+            "learning_rate": args.l_rate,
+            "batch_size": args.batch_size,
+            "architecture": "U-net",
+            "n_feat": args.n_feat,
+            "n_T": args.n_T,
+            "epochs": args.n_epoch,
+        }
+    )
+
     scaler = MinMaxScaler()
     dataset = CustomDataset(data_path, scaler)
     dataset.cal_transf() # min_max transf of EGv
-    dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=0)
+    # split to 8:1:1
+    train_size = int(0.8*len(dataset)); val_size = int(0.1*len(dataset)); test_size = len(dataset) - train_size - val_size
+    train_data, val_data, test_data = random_split(dataset, [train_size, val_size, test_size])
+    torch.save(test_data, save_dir+"test.pth")
+    # dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=0)
+    # 加载数据
+    train_dataloader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True)
+    val_dataloader = DataLoader(val_data, batch_size=args.batch_size, shuffle=True)
+    # test_dataloader = DataLoader(test_data, batch_size=args.batch_size, shuffle=True)
 
     ddpm = DDPM.DDPM(nn_model = Unet.ContextUnet(in_channels=5, n_feat=args.n_feat, drop_prob=args.drop_prob),
                 betas = (1e-4, 0.02), n_T = args.n_T, device = device, drop_prob = args.drop_prob)
@@ -111,14 +136,15 @@ def train(args:argparse.Namespace):
     lrate = args.l_rate
     optim = torch.optim.Adam(ddpm.parameters(), lr=lrate)
     loss_save = []
-    ddpm.train()
     for ep in range(args.n_epoch):
+        ddpm.train()
         print(f'epoch {ep}')
         loss_list = []
         
         optim.param_groups[0]["lr"] = lrate*(1-ep/args.n_epoch)
-        pbar = tqdm(dataloader)
+        pbar = tqdm(train_dataloader)
         loss_ema = None
+        loss_total = 0
         for x,c in pbar:
             optim.zero_grad()
             x = x.to(device)
@@ -129,10 +155,26 @@ def train(args:argparse.Namespace):
                 loss_ema = loss.item()
             else: 
                 loss_ema = 0.95 * loss_ema + 0.05 * loss.item()
-            pbar.set_description(f"loss: {loss_ema:.4f}")
+            pbar.set_description(f"train_loss: {loss_ema:.4f}")
             loss_list.append(loss_ema)
             optim.step()
-        loss_save.append(loss_list)
+            loss_total += loss.item() * x.size(0)
+        loss_save.append(loss_list) #old version
+        loss_avg = loss_total/ len(train_data)
+        
+        ddpm.eval()
+        pbar = tqdm(val_dataloader)
+        loss_val_total = 0
+        with torch.no_grad():
+            for x, c in pbar:
+                x = x.to(device); c = c.to(device)
+                loss_val = ddpm(x,c)
+                pbar.set_description(f"test_loss: {loss_val:.4f}")
+                loss_val_total += loss_val.item() * x.size(0)
+            loss_val_avg = loss_val_total/ len(val_data)
+        
+        wandb.log({"loss_val": loss_val_avg, "loss_train": loss_avg})
+
         if args.save_model and ep%10 == 0:
             torch.save(ddpm.state_dict(), save_dir + f"model_{ep}.pth")
             print('saved model at ' + save_dir + f"model_{ep}.pth")    
@@ -206,7 +248,7 @@ def try_device(i=0):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='hyperparameter')
     parser.add_argument('--n_epoch', type=int, default=3000)
-    parser.add_argument('--batch_size', type=int, default=2560)
+    parser.add_argument('--batch_size', type=int, default=1280)
     parser.add_argument('--n_T', type=int, default=1000, help='扩散步数')
     parser.add_argument('--n_feat', type=int, default=512, help='number of feature in Unet')
     parser.add_argument('--l_rate', type=float, default=1e-3)
