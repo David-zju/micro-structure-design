@@ -103,9 +103,11 @@ def train(args:argparse.Namespace):
     device = try_device()
 
     data_path = 'data_process/all_data_augmented.csv'
-    save_dir = 'train/5_8/'
+    train_name = '5_8'
+    save_dir = 'train/' + train_name + '/'
     wandb.init(
-        project="Inverse-Design",
+        project = "Inverse-Design",
+        name = train_name,
         config={
             "learning_rate": args.l_rate,
             "batch_size": args.batch_size,
@@ -248,9 +250,9 @@ def try_device(i=0):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='hyperparameter')
     parser.add_argument('--n_epoch', type=int, default=3000)
-    parser.add_argument('--batch_size', type=int, default=1280)
+    parser.add_argument('--batch_size', type=int, default=3000)
     parser.add_argument('--n_T', type=int, default=1000, help='扩散步数')
-    parser.add_argument('--n_feat', type=int, default=512, help='number of feature in Unet')
+    parser.add_argument('--n_feat', type=int, default=256, help='number of feature in Unet')
     parser.add_argument('--l_rate', type=float, default=1e-3)
     parser.add_argument('--ws_test', type=list, default=[0.0, 0.5, 2.0, 4.0, 6.0], help='strength of generative guidance')
     parser.add_argument('--drop_prob', type=float, default=0.1)

@@ -38,7 +38,7 @@ class ResidualConvBlock(nn.Module):
 class UnetDown(nn.Module):
     def __init__(self, in_channels:int, out_channels:int) -> None:
         super(UnetDown, self).__init__()
-        layers = [ResidualConvBlock( in_channels, out_channels)]
+        layers = [ResidualConvBlock( in_channels, out_channels), nn.Conv1d(out_channels, out_channels, 2,2,0)]
         self.model = nn.Sequential(*layers)
         
     def forward(self, x):
@@ -48,7 +48,7 @@ class UnetUp(nn.Module):
     def __init__(self, in_channels:int, out_channels:int) -> None:
         super(UnetUp, self).__init__()
         layers = [
-            nn.ConvTranspose1d(in_channels, out_channels, 3, 1, 1),
+            nn.ConvTranspose1d(in_channels, out_channels, 2, 2),
             ResidualConvBlock(out_channels, out_channels),
             ResidualConvBlock(out_channels, out_channels),
             nn.GELU()
@@ -148,7 +148,7 @@ class ContextUnet(nn.Module):
         cemb2 = self.phy_emb2(conditions)
         temb1 = self.t_emb1(t)
         temb2 = self.t_emb2(t)
-        
+
         x = self.init_conv(x) # n_feat
         d1 = self.down1(x) # n_feat*2
         d2 = self.down2(d1) # n_feat*4
