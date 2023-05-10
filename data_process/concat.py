@@ -61,10 +61,10 @@ def plotegv(all_df):
     ax3.set_xlabel('G12')
     ax3.set_ylabel('V12')
 
-    ax4 = fig.add_subplot(234)
-    ax4.scatter(all_df['E11'], all_df['Thickness'], s=3, alpha=0.2)
-    ax4.set_xlabel('E11')
-    ax4.set_ylabel('thickness')
+    # ax4 = fig.add_subplot(234)
+    # ax4.scatter(all_df['E11'], all_df['Thickness'], s=3, alpha=0.2)
+    # ax4.set_xlabel('E11')
+    # ax4.set_ylabel('thickness')
 
     ax5 = fig.add_subplot(235)
     ax5.scatter(all_df['E11'], all_df['RelDensity'], s=3, alpha=0.2)
@@ -96,7 +96,7 @@ def plotegv3D(all_df):
     plt.show()
 
 
-csv_file_path = 'data_process/all_data.csv'
+csv_file_path = 'data_process/all_data_diff_thick.csv'
 if os.path.exists(csv_file_path):
     all_df = pd.read_csv(csv_file_path)
     row = all_df.iloc[0]
@@ -126,7 +126,7 @@ else:
     all_df = pd.concat([phy_df, new_df], axis=1)
     all_df.to_csv(csv_file_path, index=False)
 
-
+breakpoint()
 plotegv(all_df)
 # profile = ProfileReport(all_df, title="Data Report", explorative=True, minimal=True)
 

@@ -45,7 +45,7 @@ def read_phy_files(folder_path = 'data_process/物理属性'):
 
 if __name__ == "__main__":
     df_all = read_phy_files()
-    csv_file_path = 'data_process/physical_data.csv'
+    csv_file_path = 'data_process/physical_data_diff_thick.csv'
     df_all.to_csv(csv_file_path, index=False)
     # print(df)
 
